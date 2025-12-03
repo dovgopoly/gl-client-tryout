@@ -1,5 +1,5 @@
 [package]
-name = "gl-client-try"
+name = "gl-client-tryout"
 version = "0.1.0"
 edition = "2024"
 
@@ -9,4 +9,3 @@ rand = "*"
 bip39 = { version = "*", features=["rand_core"] }
 anyhow = "1.0.100"
 tokio = "1.48.0"
-hex = "0.4.3"

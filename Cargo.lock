@@ -1055,13 +1055,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "gl-client-try"
+name = "gl-client-tryout"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "bip39",
  "gl-client",
- "hex",
  "rand",
  "tokio",
 ]

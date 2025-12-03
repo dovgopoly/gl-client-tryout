@@ -6,7 +6,7 @@ services:
     container_name: bitcoind
     restart: unless-stopped
     volumes:
-      - /Users/i/Library/Application Support/Bitcoin:/bitcoin/.bitcoin
+      - ${HOME}/Library/Application Support/Bitcoin:/bitcoin/.bitcoin
 #    healthcheck:
 #      test: [ "CMD-SHELL", "bitcoin-cli -regtest -rpcuser=user -rpcpassword=pass getblockchaininfo" ]
     command:
@@ -31,7 +31,7 @@ services:
 #      bitcoind:
 #        condition: service_healthy
     volumes:
-      - /Users/i/Documents/lightning-data:/root/.lightning
+      - ${HOME}/.lightning:/root/.lightning
     command:
       - --network=regtest
       - --bitcoin-rpcconnect=bitcoind
