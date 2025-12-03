@@ -1,0 +1,4 @@
+[submodule "greenlight"]
+	path = greenlight
+	url = https://github.com/dovgopoly/greenlight.git
+	branch = fix/gl-testing-docker
