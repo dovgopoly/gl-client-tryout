@@ -9,3 +9,7 @@ rand = "*"
 bip39 = { version = "*", features=["rand_core"] }
 anyhow = "1.0.100"
 tokio = "1.48.0"
+bitcoincore-rpc = "0.19"
+serde = "1.0.228"
+serde_json = "1.0.145"
+url = "2.5.7"
