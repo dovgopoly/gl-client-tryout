@@ -1162,6 +1162,7 @@ dependencies = [
  "bip39",
  "bitcoincore-rpc",
  "gl-client",
+ "hex",
  "rand",
  "serde",
  "serde_json",
