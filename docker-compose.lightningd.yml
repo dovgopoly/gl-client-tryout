@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  bitcoind:
+    image: kylemanna/bitcoind
+    container_name: bitcoind
+    restart: unless-stopped
+    volumes:
+      - ${HOME}/Library/Application Support/Bitcoin:/bitcoin/.bitcoin
+    #    healthcheck:
+    #      test: [ "CMD-SHELL", "bitcoin-cli -regtest -rpcuser=user -rpcpassword=pass getblockchaininfo" ]
+    command:
+      - -regtest
+      - -server
+      - -rpcuser=user
+      - -rpcpassword=pass
+      - -rpcallowip=0.0.0.0/0
+      - -rpcbind=0.0.0.0
+      - -prune=550
+      - -disablewallet=0
+    ports:
+      - "18443:18443"
+    networks:
+      - btc-ln
+
+  lightningd:
+    image: elementsproject/lightningd
+    container_name: lightningd
+    restart: unless-stopped
+    #    depends_on:
+    #      bitcoind:
+    #        condition: service_healthy
+    volumes:
+      - ${HOME}/.lightning:/root/.lightning
+    command:
+      - --network=regtest
+      - --bitcoin-rpcconnect=bitcoind
+      - --bitcoin-rpcport=18443
+      - --bitcoin-rpcuser=user
+      - --bitcoin-rpcpassword=pass
+    ports:
+      - "9735:9735"
+      - "9736:9736"
+    networks:
+      - btc-ln
+
+networks:
+  btc-ln:
+    driver: bridge
