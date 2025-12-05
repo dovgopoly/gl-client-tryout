@@ -28,13 +28,16 @@ struct TestServerMetadata {
     nobody_key_path: String,
 }
 
-const GL_TESTSERVER_METADATA_PATH: &str = "greenlight/.gltestserver/metadata.json";
+const GL_TESTSERVER_METADATA_PATH: &str = "/gltestserver/metadata.json";
 const CREDS_FILE_NAME: &str = "creds";
 const SEED_FILE_NAME: &str = "seed";
 
 fn load_testserver_config() -> Result<TestServerMetadata> {
     let content = fs::read_to_string(GL_TESTSERVER_METADATA_PATH)?;
-    let config: TestServerMetadata = serde_json::from_str(&content)?;
+    let mut config: TestServerMetadata = serde_json::from_str(&content)?;
+    // Replace localhost with 127.0.0.1 in bitcoind URI to avoid IPv6 resolution issues in Docker
+    // But keep localhost for scheduler/grpc URIs because the TLS certificate is valid for localhost
+    config.bitcoind_rpc_uri = config.bitcoind_rpc_uri.replace("localhost", "127.0.0.1");
     Ok(config)
 }
 
@@ -46,6 +49,7 @@ fn create_bitcoin_client(rpc_uri: &str) -> Result<BitcoinClient> {
         url.host_str().unwrap(),
         url.port().unwrap()
     );
+    println!("Connecting to bitcoind at: {}", host);
     let auth = Auth::UserPass(
         url.username().to_string(),
         url.password().unwrap_or("").to_string(),
@@ -72,8 +76,10 @@ impl GlNode {
         fs::create_dir_all(creds_dir)?;
         let seed = Self::load_or_create_seed(&seed_path)?;
 
+        let ca = fs::read(&config.ca_crt_path)?;
+
         let device = if Path::new(&creds_path).exists() {
-            Device::from_path(&creds_path)
+            Device::from_path(&creds_path).with_ca(ca)
         } else {
             let signer = Signer::new(seed.to_vec(), NETWORK, nobody_creds.clone())?;
             let scheduler = Scheduler::with(
@@ -83,7 +89,7 @@ impl GlNode {
             )
             .await?;
             let reg = scheduler.register(&signer, None).await?;
-            let device = Device::from_bytes(reg.creds);
+            let device = Device::from_bytes(reg.creds).with_ca(ca.clone());
             File::create(&creds_path)?.write_all(&device.to_bytes())?;
             device
         };
@@ -190,7 +196,7 @@ impl GlNode {
 #[tokio::main]
 async fn main() -> Result<()> {
     let config = load_testserver_config()?;
-    println!("Loaded testserver config");
+    println!("Loaded testserver config: {:#?}", config);
 
     let btc = create_bitcoin_client(&config.bitcoind_rpc_uri)?;
     println!(
@@ -238,6 +244,8 @@ async fn main() -> Result<()> {
     btc.generate_to_address(101, &alice_btc_addr)?;
     println!("Mined 101 blocks to Alice's address");
 
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
     let alice_funds = alice.list_funds().await?;
     let total_sats: u64 = alice_funds
         .outputs
@@ -248,13 +256,11 @@ async fn main() -> Result<()> {
 
     println!("\n--- Connecting Alice to Bob ---");
     let bob_binding = bob_info.binding.first().context("Bob has no binding")?;
-    let bob_internal_port = bob_binding.port.context("Bob binding has no port")?;
-    // Apply port offset: internal port (55xxx) -> proxy port (54xxx)
-    let bob_p2p_port = bob_internal_port - 1000;
+    let bob_p2p_port = bob_binding.port.context("Bob binding has no port")?;
     alice
         .connect_peer(
             &hex::encode(&bob_info.id),
-            bob_binding.address(),
+            bob_binding.address.as_deref().unwrap_or("127.0.0.1"),
             bob_p2p_port,
         )
         .await?;
