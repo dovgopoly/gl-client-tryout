@@ -28,7 +28,7 @@ struct TestServerMetadata {
     nobody_key_path: String,
 }
 
-const GL_TESTSERVER_METADATA_PATH: &str = "/gltestserver/metadata.json";
+const GL_TESTSERVER_METADATA_PATH: &str = "/repo/.gltestserver/metadata.json";
 const CREDS_FILE_NAME: &str = "creds";
 const SEED_FILE_NAME: &str = "seed";
 
@@ -244,7 +244,7 @@ async fn main() -> Result<()> {
     btc.generate_to_address(101, &alice_btc_addr)?;
     println!("Mined 101 blocks to Alice's address");
 
-    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
 
     let alice_funds = alice.list_funds().await?;
     let total_sats: u64 = alice_funds
