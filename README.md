@@ -21,7 +21,7 @@ gltestserver-1  | │   'nobody_key_path': '/repo/.gltestserver/gl-testserver/ce
 gltestserver-1  | }
 ```
 
-The run in another terminal:
+Then run in another terminal:
 
 ```bash
 docker compose up rust-test
