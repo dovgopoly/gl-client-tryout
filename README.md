@@ -26,3 +26,12 @@ Then run in another terminal:
 ```bash
 docker compose up rust-test
 ```
+
+## Run CLN with PeerSwap plugin
+
+```bash
+docker-compose -f docker-compose.lightningd.yml build lightningd
+docker-compose -f docker-compose.lightningd.yml up -d
+# Verify plugin is loaded
+docker exec lightningd lightning-cli --network=regtest plugin list
+```
