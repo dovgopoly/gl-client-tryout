@@ -6,7 +6,7 @@ services:
     container_name: bitcoind
     restart: unless-stopped
     volumes:
-      - ${HOME}/Library/Application Support/Bitcoin:/bitcoin/.bitcoin
+      - ${HOME}/.bitcoin:/bitcoin/.bitcoin
     #    healthcheck:
     #      test: [ "CMD-SHELL", "bitcoin-cli -regtest -rpcuser=user -rpcpassword=pass getblockchaininfo" ]
     command:
@@ -23,20 +23,17 @@ services:
     networks:
       - btc-ln
 
-  lightningd:
+  alice:
     build:
       context: .
       dockerfile: Dockerfile.lightningd-peerswap
     image: lightningd-peerswap:latest
-    container_name: lightningd
+    container_name: alice
     restart: unless-stopped
-    #    depends_on:
-    #      bitcoind:
-    #        condition: service_healthy
     volumes:
-      - ${HOME}/.lightning:/root/.lightning
-      - ./peerswap.conf:/root/.peerswap/peerswap.conf
-      - ./policy.conf:/root/.peerswap/policy.conf
+      - ${HOME}/.lightning-alice:/root/.lightning
+      - ./peerswap.conf:/root/.lightning/regtest/peerswap/peerswap.conf
+      - ./policy.conf:/root/.lightning/regtest/peerswap/policy.conf
     command:
       - --network=regtest
       - --bitcoin-rpcconnect=bitcoind
@@ -44,9 +41,37 @@ services:
       - --bitcoin-rpcuser=user
       - --bitcoin-rpcpassword=pass
       - --plugin=/usr/local/libexec/c-lightning/plugins/peerswap
+      - --addr=0.0.0.0:9735
+      - --grpc-port=10001
     ports:
       - "9735:9735"
-      - "9736:9736"
+      - "10001:10001"
+    networks:
+      - btc-ln
+
+  bob:
+    build:
+      context: .
+      dockerfile: Dockerfile.lightningd-peerswap
+    image: lightningd-peerswap:latest
+    container_name: bob
+    restart: unless-stopped
+    volumes:
+      - ${HOME}/.lightning-bob:/root/.lightning
+      - ./peerswap.conf:/root/.lightning/regtest/peerswap/peerswap.conf
+      - ./policy.conf:/root/.lightning/regtest/peerswap/policy.conf
+    command:
+      - --network=regtest
+      - --bitcoin-rpcconnect=bitcoind
+      - --bitcoin-rpcport=18443
+      - --bitcoin-rpcuser=user
+      - --bitcoin-rpcpassword=pass
+      - --plugin=/usr/local/libexec/c-lightning/plugins/peerswap
+      - --addr=0.0.0.0:9735
+      - --grpc-port=10001
+    ports:
+      - "9736:9735"
+      - "10002:10001"
     networks:
       - btc-ln
 
