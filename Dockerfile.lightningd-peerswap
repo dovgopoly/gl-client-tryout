@@ -1,0 +1,33 @@
+FROM elementsproject/lightningd:latest AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    make \
+    wget \
+    gcc \
+    libc-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Go 1.22 (detect architecture)
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "arm64" ]; then GOARCH="arm64"; else GOARCH="amd64"; fi && \
+    wget -q https://go.dev/dl/go1.22.6.linux-${GOARCH}.tar.gz && \
+    tar -C /usr/local -xzf go1.22.6.linux-${GOARCH}.tar.gz && \
+    rm go1.22.6.linux-${GOARCH}.tar.gz
+
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+# Clone and build PeerSwap
+WORKDIR /tmp
+RUN git clone https://github.com/ElementsProject/peerswap.git && \
+    cd peerswap && \
+    make cln-release
+
+FROM elementsproject/lightningd:latest
+
+# Copy the built plugin
+COPY --from=builder /tmp/peerswap/peerswap /usr/local/libexec/c-lightning/plugins/peerswap
+
+# Ensure plugin is executable
+RUN chmod +x /usr/local/libexec/c-lightning/plugins/peerswap
