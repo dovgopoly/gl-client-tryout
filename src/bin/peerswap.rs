@@ -39,9 +39,9 @@ fn pay(container: &str, bolt11: &str) -> Result<()> {
     Ok(())
 }
 
-fn set_premium_rate(container: &str, ppm_swap_in: u64, ppm_swap_out: u64) -> Result<()> {
-    cli(container, &["peerswap-updateglobalpremiumrate", "btc", "swap_out", &ppm_swap_in.to_string()])?;
-    cli(container, &["peerswap-updateglobalpremiumrate", "btc", "swap_in", &ppm_swap_out.to_string()])?;
+fn set_premium_rate(container: &str, ppm_swap_out: u64, ppm_swap_in: u64) -> Result<()> {
+    cli(container, &["peerswap-updateglobalpremiumrate", "btc", "swap_out", &ppm_swap_out.to_string()])?;
+    cli(container, &["peerswap-updateglobalpremiumrate", "btc", "swap_in", &ppm_swap_in.to_string()])?;
     Ok(())
 }
 
