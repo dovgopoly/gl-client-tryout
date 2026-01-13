@@ -7,8 +7,6 @@ services:
     restart: unless-stopped
     volumes:
       - ${HOME}/.bitcoin:/bitcoin/.bitcoin
-    #    healthcheck:
-    #      test: [ "CMD-SHELL", "bitcoin-cli -regtest -rpcuser=user -rpcpassword=pass getblockchaininfo" ]
     command:
       - -regtest
       - -server
@@ -20,6 +18,29 @@ services:
       - -disablewallet=0
     ports:
       - "18443:18443"
+    networks:
+      - btc-ln
+
+  elementsd:
+    image: blockstream/elementsd:latest
+    container_name: elementsd
+    restart: unless-stopped
+    volumes:
+      - ${HOME}/.elements:/home/elements/.elements
+    entrypoint: ["elementsd"]
+    command:
+      - -chain=liquidregtest
+      - -server
+      - -rpcuser=user
+      - -rpcpassword=pass
+      - -rpcallowip=0.0.0.0/0
+      - -rpcbind=0.0.0.0
+      - -rpcport=7041
+      - -validatepegin=0
+      - -initialfreecoins=2100000000000000
+      - -acceptdiscountct=1
+    ports:
+      - "7041:7041"
     networks:
       - btc-ln
 
