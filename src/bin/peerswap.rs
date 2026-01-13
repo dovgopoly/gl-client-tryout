@@ -173,6 +173,16 @@ fn decode_tx_output(tx_hex: &str, vout: usize) -> Result<u64> {
     Ok(tx.output.get(vout).context("No output")?.value.to_sat())
 }
 
+fn liquid_get_tx_fee(tx_hex: &str) -> Result<u64> {
+    let decoded = elements_cli(&["decoderawtransaction", tx_hex])?;
+    // Fee is an object: {"asset_id": amount}
+    let fee_obj = decoded["fee"].as_object().context("No fee object")?;
+    let fee = fee_obj.values().next()
+        .and_then(|v| v.as_f64())
+        .context("No fee value")?;
+    Ok((fee.abs() * 100_000_000.0) as u64)
+}
+
 fn swap_out_lbtc(
     container: &str,
     scid: &str,
@@ -346,7 +356,9 @@ async fn main() -> Result<()> {
     println!("Before: Alice={} Bob={}", alice_before, bob_before);
 
     let result = swap_out_lbtc("alice", &scid, 100_000, 10_000)?;
-    println!("L-BTC Swap-out completed! onchain_fee={} premium={}", result.onchain_fee, result.premium);
+    let tx_fee = liquid_get_tx_fee(&result.opening_tx_hex)?;
+    println!("L-BTC Swap-out completed! onchain_fee={} premium={}", tx_fee, result.premium);
+    println!("On-chain sent: {} (amount={} + premium={})", 100_000 + result.premium, 100_000, result.premium);
 
     let alice_after = get_channel_balance("alice", &scid)?;
     let bob_after = get_channel_balance("bob", &scid)?;
@@ -361,7 +373,9 @@ async fn main() -> Result<()> {
     println!("Before: Alice={} Bob={}", alice_before, bob_before);
 
     let result = swap_in_lbtc("alice", &scid, 100_000, 10_000)?;
-    println!("L-BTC Swap-in completed! onchain_fee={} premium={}", result.onchain_fee, result.premium);
+    let tx_fee = liquid_get_tx_fee(&result.opening_tx_hex)?;
+    println!("L-BTC Swap-in completed! onchain_fee={} premium={}", tx_fee, result.premium);
+    println!("On-chain sent: {} (amount={} + premium={})", 100_000 + result.premium, 100_000, result.premium);
 
     let alice_after = get_channel_balance("alice", &scid)?;
     let bob_after = get_channel_balance("bob", &scid)?;
