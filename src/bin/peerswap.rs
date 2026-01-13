@@ -88,54 +88,12 @@ fn elements_cli_raw(args: &[&str]) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-fn liquid_claim_genesis() -> Result<()> {
-    // Check if we already have funds
-    let balance = elements_cli(&["-rpcwallet=peerswap", "getbalance"])?;
-    if let Some(bal) = balance["bitcoin"].as_f64() {
-        if bal > 1.0 {
-            println!("Wallet already has {} L-BTC, skipping genesis claim", bal);
-            return Ok(());
-        }
-    }
-
-    // Find anyone-can-spend output (OP_TRUE = 0x51) using scantxoutset
-    let scan = elements_cli(&["scantxoutset", "start", r#"["raw(51)"]"#])?;
-    let utxo = scan["unspents"].as_array()
-        .and_then(|arr| arr.first())
-        .context("No anyone-can-spend UTXO found (already claimed?)")?;
-
-    let txid = utxo["txid"].as_str().context("No txid")?;
-    let vout = utxo["vout"].as_u64().context("No vout")?;
-    let amount = utxo["amount"].as_f64().context("No amount")?;
-    let asset = utxo["asset"].as_str().context("No asset")?;
-
+fn liquid_fund_wallet() -> Result<()> {
+    // With -anyonecanspendaremine=1, genesis coins are spendable via sendtoaddress
     let addr = liquid_newaddr()?;
-    let fee = 0.0001;
-    let send_amount = amount - fee;
-
-    // Create raw transaction with explicit fee output
-    let inputs = format!(r#"[{{"txid":"{}","vout":{}}}]"#, txid, vout);
-    let outputs = format!(r#"[{{"{}":{}}},{{"fee":{}}}]"#, addr, send_amount, fee);
-    let raw_hex = elements_cli_raw(&["createrawtransaction", &inputs, &outputs])?;
-
-    // Blind the transaction (Liquid uses confidential transactions)
-    let zero_blinder = r#"["0000000000000000000000000000000000000000000000000000000000000000"]"#;
-    let amounts = format!("[{}]", amount);
-    let assets = format!(r#"["{}"]"#, asset);
-    let blinded_hex = elements_cli_raw(&[
-        "rawblindrawtransaction", &raw_hex, zero_blinder, &amounts, &assets, zero_blinder
-    ])?;
-
-    // Sign (anyone-can-spend)
-    let prevtx = format!(r#"[{{"txid":"{}","vout":{},"scriptPubKey":"51","amount":{}}}]"#, txid, vout, amount);
-    let signed = elements_cli(&["-rpcwallet=peerswap", "signrawtransactionwithwallet", &blinded_hex, &prevtx])?;
-    let signed_hex = signed["hex"].as_str().context("No signed hex")?;
-
-    // Broadcast and confirm
-    elements_cli_raw(&["sendrawtransaction", signed_hex])?;
+    liquid_send(&addr, 100.0)?;
     liquid_generate(1)?;
-
-    println!("Claimed {} L-BTC from genesis", send_amount);
+    println!("Funded wallet with 100 L-BTC");
     Ok(())
 }
 
@@ -371,7 +329,7 @@ async fn main() -> Result<()> {
     // Initialize Liquid
     let _ = elements_cli(&["createwallet", "peerswap"]); // ignore if exists
     let _ = elements_cli(&["loadwallet", "peerswap"]);   // load if not loaded
-    liquid_claim_genesis()?;
+    liquid_fund_wallet()?;
 
     // Fund Alice and Bob with L-BTC
     let alice_lbtc_addr = peerswap_lbtc_addr("alice")?;
@@ -388,8 +346,7 @@ async fn main() -> Result<()> {
     println!("Before: Alice={} Bob={}", alice_before, bob_before);
 
     let result = swap_out_lbtc("alice", &scid, 100_000, 10_000)?;
-    println!("L-BTC Swap-out completed! premium={}", result.premium);
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    println!("L-BTC Swap-out completed! onchain_fee={} premium={}", result.onchain_fee, result.premium);
 
     let alice_after = get_channel_balance("alice", &scid)?;
     let bob_after = get_channel_balance("bob", &scid)?;
@@ -404,8 +361,7 @@ async fn main() -> Result<()> {
     println!("Before: Alice={} Bob={}", alice_before, bob_before);
 
     let result = swap_in_lbtc("alice", &scid, 100_000, 10_000)?;
-    println!("L-BTC Swap-in completed! premium={}", result.premium);
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    println!("L-BTC Swap-in completed! onchain_fee={} premium={}", result.onchain_fee, result.premium);
 
     let alice_after = get_channel_balance("alice", &scid)?;
     let bob_after = get_channel_balance("bob", &scid)?;

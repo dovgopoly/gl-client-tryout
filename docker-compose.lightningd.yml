@@ -39,6 +39,7 @@ services:
       - -validatepegin=0
       - -initialfreecoins=2100000000000000
       - -acceptdiscountct=1
+      - -anyonecanspendaremine=1
     ports:
       - "7041:7041"
     networks:
